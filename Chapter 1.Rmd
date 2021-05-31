@@ -1,0 +1,102 @@
+---
+title: "Chapter 1"
+author: "Chi Zhang"
+date: "5/30/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(fda)
+library(tidyverse)
+library(fds)
+library(lubridate)
+```
+
+# Chapter 1
+
+## 1.1
+The pinch is a dataset included in the fda package. It consists of 151
+measurements of pinch force for 20 replications (curves).  
+(a) Convert the pinch data to functional objects using 15 B-splines of order
+four (cubic splines) and plot the 20 smoothed curves on one graph.  
+(b) Calculate the pointwise mean and SD and add them to the plot.  
+(c) Graph the perspective and contour plots of the sample covariance function
+$\hat{c}(t, s)$ of the pinch curves.  
+(d) Graph the first four EFPC's of the pinch data. How many components
+do you need to explain 90% of variation?  
+
+```{r Q1, echo=TRUE}
+df <- pinch
+# create and plot 15 B-spline lines with order 4
+B15.basis <- create.bspline.basis(rangeval=c(0, 151), nbasis=15, norder=4)
+plot(B15.basis, lty=1, lwd=2)
+# cover pinch into functional objects
+# (a)
+pinch.fd <- smooth.basis(y=df, fdParobj=B15.basis)
+plot(pinch.fd, titles = 'Smoothed pinch functional objects')
+
+# (b)
+pinchbar <- mean.fd(pinch.fd$fd)
+sdpinch <- std.fd(pinch.fd$fd)
+lines(pinchbar, lwd = 2)
+lines(sdpinch, lwd = 1)
+
+# (c)
+pinch.cov <- var.fd(pinch.fd$fd)
+grid <- seq(1, 151, 1)
+pinch.cov.mat <- eval.bifd(grid, grid, pinch.cov)
+persp(grid, grid, pinch.cov.mat, xlab="s", ylab="t", zlab="c(s,t)")
+contour(grid, grid, pinch.cov.mat, lwd=2)
+
+# (d)
+pinch.pca <- pca.fd(pinch.fd$fd, nharm = 4)
+pinch.pca$varprop
+(pinch.pca$varprop)[1:2] %>% sum()
+plot(pinch.pca$harmonics, lwd=3)
+```
+
+## 1.2
+For this problem, download the R package fds and use the data set of the
+United States Federal Reserve interest rates, FedYieldcurve, which contains
+the monthly interest rates from January 1982 to June 2009. The x-values are
+the maturity terms of 3, 6, 12, 60, 84 and 120 months which can be identified
+with the $t_j$ in this chapter. The y-values are the interest rates of the
+United States Treasury obligations due in x months which can be identified
+with the $x_n(t_j)$, where n is a month in the range January 1982 to June 2009.  
+(a) On one graph, plot the interest rates $x(t_j)$ for January 1982 and for
+June 2009 against the maturity terms $t_j$ . How do the interest rates in these
+two months compare? Use the following code:
+```markdown
+library(fds)
+library(fda)
+yield = FedYieldcurve; terms = yield$x
+plot(terms, yield$y[,1], pch=15, ylab="Yield", ylim=c(0,16))
+points(terms, yield$y[,330], pch=16)
+```
+
+```{r Q2, echo=TRUE}
+# (a)
+yield = FedYieldcurve
+terms = yield$x
+plot(terms, yield$y[, 1], pch=15, ylab="Yield", ylim=c(0, 23))
+points(terms, yield$y[, 330], pch=16)
+legend(x = 98, y = 22, legend = c('Jan 1982', 'June 2009'), pch = 15:16)
+
+# (b)
+B4.basis <- create.bspline.basis(rangeval=c(0, dim(yield$y)[1]), nbasis=4, norder=4)
+yield.fd <- smooth.basis(y=yield$y, fdParobj = B4.basis)
+# plot(yield.fd$fd) <<---- not informative
+yield.mean <- mean.fd(yield.fd$fd)
+plot(yield.mean, xaxt = "n", xlab = 'term',
+     col = 'blue', ylab = 'interest rate') # <<-- xaxt not work properly
+# xtick = seq(0, 6, 1)
+# axis(side=1, at=xtick, labels = c(0, 3, 6 , 12, 60, 84, 120))
+# (c)
+yield.pca <- pca.fd(yield.fd$fd, nharm = 1)
+yield.pca$varprop
+plot(yield.pca$harmonics)
+# same shape of mean of yield shape. indeed 98% variation is explained.
+```
+
+
